@@ -2,26 +2,30 @@ var fs = require('fs');
 var nodemiral = require('../../');
 var path = require('path');
 
-var sshPrivateKey = fs.readFileSync(process.env.HOME + '/.ssh/id_rsa', 'utf8');
-var session = nodemiral.session('45.55.171.58', {username: 'root', pem: sshPrivateKey}, {keepAlive: false});
-var taskList = nodemiral.taskList('Getting and Printing `uname -a`');
+var sshPrivateKey = fs.readFileSync('/Users/boyu/src/scrap/nodemiral/bo-personal-aws-testing-key.pem', 'utf8');
+var session = nodemiral.session(
+  'ec2-52-53-160-116.us-west-1.compute.amazonaws.com',
+  {username: 'ubuntu', pem: sshPrivateKey}, {keepAlive: true}
+);
 
-var closeCnt = 0;
-taskList.copy('copy passwd', {
-  src: path.resolve(__dirname, "template.conf"),
-  dest: '/tmp/hello'
+var command = 'sudo docker run -i -p 8888:8888 -p 6006:6006 floydhub/dl-docker:cpu jupyter notebook';
+
+console.log(command);
+
+/*
+session.execute(command, function(stdout, stderr) {
+  console.log(stdout, stderr);
 });
+*/
 
-taskList.execute('get it', {
-  command: 'cat /tmp/hello'
-}, function(stdout, stderr) {
-  this.hello = stdout;
-});
-
-taskList.print('printing hello', {
-  message: "\t Hello is: {{hello}}"
-});
-
-taskList.run(session, function() {
-  session.close();
+session.executeStream(command, function(err, stream) {
+  stream.on('close', function(code, signal) {
+    console.log('stream close');
+  }).on('data', function(data) {
+    data = data.toString();
+    console.log('STDOUT ==== ', data);
+  }).stderr.on('data', function(data) {
+    data = data.toString();
+    console.log('STDERR ==== ', data);
+  });
 });
